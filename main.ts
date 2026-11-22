@@ -59,31 +59,39 @@ function run(prog: Uint8Array, input: Uint8Array): { out: Uint8Array; code: numb
       case 0x21: case 0x22: {
         const b = D[--sp];
         const a = D[sp - 1];
-        let r: number;
-        if (op === 0x10) r = a + b;
-        else if (op === 0x11) r = a - b;
-        else if (op === 0x12) r = Math.imul(a, b);
-        else if (op === 0x13) {
-          if (b === 0) return end(4);
-          r = a === -2147483648 && b === -1 ? a : (a / b) | 0;
-        } else if (op === 0x14) {
-          if (b === 0) return end(4);
-          r = b === -1 ? 0 : a % b;
-        } else if (op === 0x15) {
-          if (b === 0) return end(4);
-          r = Math.floor((a >>> 0) / (b >>> 0));
-        } else if (op === 0x16) {
-          if (b === 0) return end(4);
-          r = (a >>> 0) % (b >>> 0);
-        } else if (op === 0x18) r = a & b;
-        else if (op === 0x19) r = a | b;
-        else if (op === 0x1a) r = a ^ b;
-        else if (op === 0x1c) r = a << b;
-        else if (op === 0x1d) r = a >> b;
-        else if (op === 0x1e) r = a >>> b;
-        else if (op === 0x20) r = a === b ? 1 : 0;
-        else if (op === 0x21) r = a < b ? 1 : 0;
-        else r = (a >>> 0) < (b >>> 0) ? 1 : 0;
+        let r = 0;
+        // A switch dispatches the hot arithmetic/logic ops faster than the linear
+        // if/else chain it replaces (V8 builds a jump table for integer cases).
+        switch (op) {
+          case 0x10: r = a + b; break;
+          case 0x11: r = a - b; break;
+          case 0x12: r = Math.imul(a, b); break;
+          case 0x13:
+            if (b === 0) return end(4);
+            r = a === -2147483648 && b === -1 ? a : (a / b) | 0;
+            break;
+          case 0x14:
+            if (b === 0) return end(4);
+            r = b === -1 ? 0 : a % b;
+            break;
+          case 0x15:
+            if (b === 0) return end(4);
+            r = Math.floor((a >>> 0) / (b >>> 0));
+            break;
+          case 0x16:
+            if (b === 0) return end(4);
+            r = (a >>> 0) % (b >>> 0);
+            break;
+          case 0x18: r = a & b; break;
+          case 0x19: r = a | b; break;
+          case 0x1a: r = a ^ b; break;
+          case 0x1c: r = a << b; break;
+          case 0x1d: r = a >> b; break;
+          case 0x1e: r = a >>> b; break;
+          case 0x20: r = a === b ? 1 : 0; break;
+          case 0x21: r = a < b ? 1 : 0; break;
+          default: r = (a >>> 0) < (b >>> 0) ? 1 : 0; // 0x22 LTU, the only op left
+        }
         D[sp - 1] = r;
         break;
       }
